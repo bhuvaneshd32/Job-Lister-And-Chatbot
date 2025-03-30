@@ -1,76 +1,54 @@
-import time
-import numpy as np
-from pinecone import Pinecone
+import pinecone
+import torch
+from transformers import pipeline, T5Tokenizer, T5ForConditionalGeneration
 from sentence_transformers import SentenceTransformer
-from transformers import pipeline
 
 # Initialize Pinecone
-api_key = "pcsk_61MNxg_KG1zYAfQh9M3LSEaXjiwBvnTck97mNPRMsFNW5DCbWY1AvDYiR3AirJNytjTHkS"
-pc = Pinecone(api_key=api_key)
+PINECONE_API_KEY = "pcsk_61MNxg_KG1zYAfQh9M3LSEaXjiwBvnTck97mNPRMsFNW5DCbWY1AvDYiR3AirJNytjTHkS"
+PINECONE_ENV = "us-east-1"
+PINECONE_INDEX_NAME = "jobrecommendation"
 
-index_name = "jobrecommendation"  # Replace with your index name
-index = pc.Index(index_name)
+pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+index = pinecone.Index(PINECONE_INDEX_NAME)
 
-# Initialize Sentence Transformer model
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Pre-trained model for generating embeddings
+# Load Embedding Model for Querying Pinecone
+embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Initialize the text generation model (Hugging Face's GPT-2 for RAG)
-generator = pipeline("text-generation", model="gpt2", tokenizer="gpt2")
+# Load T5 model for text generation
+model_name = "google/flan-t5-large"
+tokenizer = T5Tokenizer.from_pretrained(model_name)
+model = T5ForConditionalGeneration.from_pretrained(model_name)
 
-# Caching dictionary for storing query results
-query_cache = {}
+# Define function to retrieve relevant documents
+def retrieve_context(user_query, top_k=5):
+    embedding = embedder.encode(user_query).tolist()
+    results = index.query(vector=embedding, top_k=top_k, include_metadata=True)
 
-# Function to retrieve jobs based on query
-def retrieve_jobs(query, top_k=5):
-    """Retrieve the top-k most relevant job postings based on the query."""
-    query_vector = model.encode([query])[0]  # Convert query to vector
-    query_vector = query_vector.tolist()  # Convert numpy array to list
-    
-    response = index.query(
-        vector=query_vector,
-        top_k=top_k,
-        include_metadata=True
-    )
-    
-    return response['matches']
+    # Extract relevant document texts
+    retrieved_docs = [match["metadata"]["text"] for match in results["matches"] if "metadata" in match]
+    return retrieved_docs
 
-# Function to fetch and cache query results
-def get_cached_or_query_results(query, top_k=5):
-    """Fetch from cache if available, else query the Pinecone index."""
-    if query in query_cache:
-        print("Fetching from cache")
-        return query_cache[query]
-    else:
-        print("Querying Pinecone")
-        results = retrieve_jobs(query, top_k)
-        query_cache[query] = results  # Cache the results
-        return results
+# Function to generate response using retrieved context
+def generate_rag_response(user_query):
+    retrieved_docs = retrieve_context(user_query)
 
-# Function to generate response using RAG (Retrieval-Augmented Generation)
-def generate_rag_response(query):
-    """Generate a response using the retrieved job listings."""
-    # Get the most relevant job postings from Pinecone
-    results = get_cached_or_query_results(query, top_k=5)
-    
-    # Collect the job details (titles, descriptions, etc.) for context
-    job_details = "\n".join([f"Job: {match['metadata']['title']} at {match['metadata']['company']} in {match['metadata']['location']}\nDescription: {match['metadata']['snippet']}" for match in results])
-    
-    # Prepare context for the generation model
-    context = f"Job search query: {query}\nRelevant job listings:\n{job_details}\n\nGenerate a summary or response based on these job listings."
-    
-    # Generate a response based on the context
-    response = generator(context, max_new_tokens=50, num_return_sequences=1, truncation=True)
-    
-    return response[0]['generated_text']
+    if not retrieved_docs:
+        return "I'm sorry, but I couldn't find relevant information for your query."
 
-# Example usage of the query system
+    formatted_context = "\n".join(retrieved_docs)
+    prompt = f"Context:\n{formatted_context}\n\nQuestion: {user_query}\n\nAnswer:"
+
+    input_tokens = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
+    output_tokens = model.generate(**input_tokens, max_new_tokens=150)
+
+    response = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
+    return response
+
+# Testing the RAG pipeline
 def test_query():
-    user_query = input("Enter job description query: ")
+    user_query = "What are the latest AI trends in job hiring?"
     generated_response = generate_rag_response(user_query)
-    
-    print("\nGenerated response:")
-    print(generated_response)
+    print("Generated Response:", generated_response)
 
-# This can be called from another script or directly in your main workflow
 if __name__ == "__main__":
     test_query()
