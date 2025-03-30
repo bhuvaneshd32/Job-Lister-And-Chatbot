@@ -27,7 +27,7 @@ def retrieve_context(user_query, top_k=5):
     print("\n🔍 Raw Pinecone Results:", results)  # Debugging print
 
     retrieved_docs = [
-        match["metadata"].get("text", "No text found") 
+        match["metadata"].get("snippet", "No text found") 
         for match in results.get("matches", []) if "metadata" in match
     ]
     
