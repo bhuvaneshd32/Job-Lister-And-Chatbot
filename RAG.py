@@ -1,5 +1,7 @@
 import pinecone
 import torch
+import re
+from bs4 import BeautifulSoup
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 from sentence_transformers import SentenceTransformer
 
@@ -19,19 +21,23 @@ model_name = "google/flan-t5-large"
 tokenizer = T5Tokenizer.from_pretrained(model_name)
 model = T5ForConditionalGeneration.from_pretrained(model_name)
 
+# Function to clean job descriptions
+def clean_text(text):
+    soup = BeautifulSoup(text, "html.parser")  # Remove HTML tags
+    text = soup.get_text()
+    text = re.sub(r"\s+", " ", text).strip()  # Remove extra spaces & newlines
+    return text
+
 # Retrieve relevant jobs from Pinecone
 def retrieve_context(user_query, top_k=5):
     query_embedding = embedder.encode(user_query).tolist()
     results = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)
 
-    print("\n🔍 Raw Pinecone Results:", results)  # Debugging print
-
     retrieved_docs = [
-        match["metadata"].get("snippet", "No text found") 
+        clean_text(match["metadata"].get("snippet", "No description available"))
         for match in results.get("matches", []) if "metadata" in match
     ]
     
-    print("📄 Retrieved Documents:", retrieved_docs)  # Debugging print
     return retrieved_docs
 
 # Generate response using retrieved jobs
@@ -41,8 +47,19 @@ def generate_rag_response(user_query):
     if not retrieved_docs:
         return "I'm sorry, but I couldn't find relevant job listings for your query."
 
-    formatted_context = "\n".join(retrieved_docs)
-    prompt = f"Context:\n{formatted_context}\n\nQuestion: {user_query}\n\nAnswer:"
+    formatted_context = "\n\n".join([f"- {doc}" for doc in retrieved_docs])
+    
+    prompt = f"""
+You are a job recommendation assistant. Based on the job listings below, provide a detailed response to the user's query.
+
+### Job Listings:
+{formatted_context}
+
+### Query:
+{user_query}
+
+### Answer:
+""".strip()
 
     input_tokens = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
     output_tokens = model.generate(**input_tokens, max_new_tokens=150)
