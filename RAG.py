@@ -1,84 +1,64 @@
-import time
-import html
-import uuid
-import re
-import os
+import pinecone
 import torch
-from pinecone import Pinecone
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 from sentence_transformers import SentenceTransformer
-from preprocess_jobs import fetch_jobs, preprocess_jobs, encode_jobs
 
-# Load API Key & Region securely
-api_key = os.getenv("PINECONE_API_KEY")  # Set via environment variable
-region = os.getenv("PINECONE_REGION")  # Example: "us-west4-gcp"
+# Initialize Pinecone
+PINECONE_API_KEY = "pcsk_61MNxg_KG1zYAfQh9M3LSEaXjiwBvnTck97mNPRMsFNW5DCbWY1AvDYiR3AirJNytjTHkS"
+PINECONE_ENV = "us-east-1"
+PINECONE_INDEX_NAME = "jobrecommendation"
 
-if not api_key or not region:
-    raise ValueError("❌ Missing Pinecone API Key or Region! Set PINECONE_API_KEY and PINECONE_REGION in env.")
+pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+index = pc.Index(PINECONE_INDEX_NAME)
 
-# Initialize Pinecone with region
-pc = Pinecone(api_key=api_key)
-index_name = "jobrecommendation"
-
-# Ensure the index exists
-if index_name not in pc.list_indexes():
-    print("❌ Index not found. Please run the job ingestion script first.")
-    exit()
-
-index = pc.Index(index_name, pool_threads=4, region=region)  # Added `region`
-
-# Load models efficiently
+# Load SentenceTransformer for Query Embeddings
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
+# Load T5 Model for Response Generation
 model_name = "google/flan-t5-large"
-tokenizer = T5Tokenizer.from_pretrained(model_name, legacy=True)
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model = T5ForConditionalGeneration.from_pretrained(model_name, torch_dtype=torch.float16 if device == "cuda" else torch.float32).to(device)
+tokenizer = T5Tokenizer.from_pretrained(model_name)
+model = T5ForConditionalGeneration.from_pretrained(model_name)
 
-# Function to clean text
-def clean_text(text):
-    text = html.unescape(text)  # Decode HTML entities
-    text = re.sub(r'\s+', ' ', text).strip()  # Remove extra spaces & newlines
-    text = text.replace("nbsp", "").strip()  # Remove non-breaking space artifacts
-    return text
-
-# Function to retrieve relevant job listings
+# Retrieve relevant jobs from Pinecone
 def retrieve_context(user_query, top_k=5):
-    embedding = embedder.encode(user_query).tolist()
-    
-    try:
-        results = index.query(vector=embedding, top_k=top_k, include_metadata=True)
-        retrieved_docs = [
-            clean_text(match.get("metadata", {}).get("snippet", "No relevant job description available."))
-            for match in results.get("matches", [])
-        ]
-        return retrieved_docs if retrieved_docs else ["No relevant job listings found."]
-    
-    except Exception as e:
-        print(f"❌ Error retrieving data from Pinecone: {e}")
-        return ["No relevant job listings found."]
+    query_embedding = embedder.encode(user_query).tolist()
+    results = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)
 
-# Function to generate response
+    print("\n🔍 Raw Pinecone Results:", results)  # Debugging print
+
+    retrieved_docs = [
+        match["metadata"].get("text", "No text found") 
+        for match in results.get("matches", []) if "metadata" in match
+    ]
+    
+    print("📄 Retrieved Documents:", retrieved_docs)  # Debugging print
+    return retrieved_docs
+
+# Generate response using retrieved jobs
 def generate_rag_response(user_query):
-    retrieved_docs = retrieve_context(user_query)
+    retrieved_docs = retrieve_context(user_query, top_k=8)
 
-    if "No relevant job listings found." in retrieved_docs:
-        return "I couldn't find any relevant job listings."
+    if not retrieved_docs:
+        return "I'm sorry, but I couldn't find relevant job listings for your query."
 
     formatted_context = "\n".join(retrieved_docs)
-    prompt = f"Given the following job descriptions, answer the query accurately:\n\n{formatted_context}\n\nQuery: {user_query}\n\nResponse:"
+    prompt = f"Context:\n{formatted_context}\n\nQuestion: {user_query}\n\nAnswer:"
 
-    input_tokens = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
+    input_tokens = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024)
     output_tokens = model.generate(**input_tokens, max_new_tokens=150)
-    
-    response = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
-    return response if response.strip() else "I'm unable to generate a relevant response."
 
-# Interactive loop for querying
-if __name__ == "__main__":
+    response = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
+    return response
+
+# User Input Loop for Queries
+def chat():
     while True:
-        user_query = input("\nEnter your query (or type 'exit' to quit): ").strip()
+        user_query = input("\nEnter your job search query (or type 'exit' to quit): ")
         if user_query.lower() == "exit":
+            print("Goodbye! 👋")
             break
         response = generate_rag_response(user_query)
         print("\n🤖 Generated Response:", response)
+
+if __name__ == "__main__":
+    chat()
