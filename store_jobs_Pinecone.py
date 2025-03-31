@@ -26,7 +26,7 @@ index = pc.Index(index_name)
 # Fetch and preprocess jobs dynamically
 raw_jobs = fetch_jobs("ML Intern", "Remote")  
 cleaned_jobs = preprocess_jobs(raw_jobs)  
-job_vectors = encode_jobs(cleaned_jobs)  
+job_vectors = encode_jobs(cleaned_jobs)
 
 # Prepare job metadata and embeddings
 vectors_to_store = []
