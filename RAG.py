@@ -140,6 +140,7 @@ You are an AI-powered job assistant. Your task is to extract **only** the releva
     return response.text if response else "Failed to generate response from Gemini."
 
 # User Input Loop for Queries
+"""
 def chat():
     while True:
         user_query = input("\nEnter your job search query (or type 'exit' to quit): ")
@@ -151,3 +152,8 @@ def chat():
 
 if __name__ == "__main__":
     chat()
+    
+"""
+def chat(user_query):
+    response = generate_rag_response(user_query)
+    print("\nGenerated Response:", response)
