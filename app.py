@@ -11,16 +11,24 @@ import time
 st.title("AI Resume Parser & Job Recommendation System....")
 
 # Upload Resumes
+"""
 uploaded_files = st.file_uploader(
     "Upload Resumes (PDF or Image)", 
     type=["pdf", "jpg", "jpeg", "png"], 
     accept_multiple_files=True, 
     key="unique_key_1" 
 )
-
+"""
+uploaded_files = st.file_uploader(
+    "Upload Resumes", 
+    type=["pdf"], 
+    accept_multiple_files=True, 
+    key="unique_key_1" 
+)
 
 if uploaded_files:
     # Extract Text from PDFs
+    """
     resumes = []
     
     for file in uploaded_files:
@@ -30,7 +38,8 @@ if uploaded_files:
             text = extract_text_from_image(file)
         
         resumes.append(text)
-        
+    """
+    resumes = [extract_text_from_pdf(file) for file in uploaded_files]
     extracted_info = [extract_resume_info(text) for text in resumes]
     
     # Store extracted skills in a dataframe
@@ -41,11 +50,12 @@ if uploaded_files:
     jobs = fetch_jobs(" OR ".join(extracted_info), "Remote", page=1)
     cleaned_jobs = preprocess_jobs(jobs)
     
-
+    #st.write(cleaned_jobs)
     st.header("Recommended Jobs")
     for cleaned_job in cleaned_jobs[:5]:
         st.subheader(cleaned_job.get("title", "No Title"))
-        st.write(cleaned_job.get("snippet", "No Description"))
+        st.write(cleaned_job.get("company", "Anonymous"))
+        st.write(cleaned_job.get("description", "No Description"))
         st.write(f"[Apply Here]({cleaned_job.get('link', '#')})")
         
     job_vectors = encode_jobs(cleaned_jobs)
