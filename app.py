@@ -1,5 +1,6 @@
 from pdf_parser import extract_text_from_pdf, extract_resume_info
 from preprocess_jobs import fetch_jobs, preprocess_jobs, encode_jobs
+from image_parser import extract_text_from_image
 from RAG import chat, index
 import streamlit as st
 import pandas as pd
@@ -7,12 +8,12 @@ import pinecone
 import time
 
 # Streamlit UI
-st.title("AI Resume Parser & Job Recommendation System")
+st.title("AI Resume Parser & Job Recommendation System....")
 
 # Upload Resumes
 uploaded_files = st.file_uploader(
-    "Upload Resumes", 
-    type=["pdf"], 
+    "Upload Resumes (PDF or Image)", 
+    type=["pdf", "jpg", "jpeg", "png"], 
     accept_multiple_files=True, 
     key="unique_key_1" 
 )
@@ -20,7 +21,16 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     # Extract Text from PDFs
-    resumes = [extract_text_from_pdf(file) for file in uploaded_files]
+    resumes = []
+    
+    for file in uploaded_files:
+        if file.type == "application/pdf":
+            text = extract_text_from_pdf(file)
+        else:
+            text = extract_text_from_image(file)
+        
+        resumes.append(text)
+        
     extracted_info = [extract_resume_info(text) for text in resumes]
     
     # Store extracted skills in a dataframe
