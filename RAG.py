@@ -156,4 +156,4 @@ if __name__ == "__main__":
 """
 def chat(user_query):
     response = generate_rag_response(user_query)
-    print("\nGenerated Response:", response)
+    return "\nGenerated Response:"+response
