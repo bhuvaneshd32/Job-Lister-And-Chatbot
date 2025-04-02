@@ -4,9 +4,6 @@ import requests
 import spacy
 import streamlit as st 
 
-
-
-
 nlp = spacy.load("en_core_web_sm")
 
 def extract_text_from_pdf(file):
