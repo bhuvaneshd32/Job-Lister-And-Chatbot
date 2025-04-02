@@ -55,7 +55,7 @@ if uploaded_files:
     for cleaned_job in cleaned_jobs[:5]:
         st.subheader(cleaned_job.get("title", "No Title"))
         st.write(cleaned_job.get("company", "Anonymous"))
-        st.write(cleaned_job.get("description", "No Description"))
+        #st.write(cleaned_job.get("description", "No Description"))
         st.write(f"[Apply Here]({cleaned_job.get('link', '#')})")
         
     job_vectors = encode_jobs(cleaned_jobs)
