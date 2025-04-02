@@ -1,6 +1,6 @@
 from pdf_parser import extract_text_from_pdf, extract_resume_info
 from preprocess_jobs import fetch_jobs, preprocess_jobs, encode_jobs
-from image_parser import extract_text_from_image
+from image_parser import *
 from RAG import chat, index
 import streamlit as st
 import pandas as pd
