@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 
-# Initialize Pinecone
+
 PINECONE_API_KEY = "9f049509-9a80-4dd7-9ad1-58055c2e034a"
 PINECONE_ENV = "us-east-1"
 PINECONE_INDEX_NAME = "jobrecommendation"
@@ -17,10 +17,10 @@ PINECONE_INDEX_NAME = "jobrecommendation"
 pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(PINECONE_INDEX_NAME)
 
-# Load SentenceTransformer for Query Embeddings
+
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
-# Load T5 Model for Response Generation
+
 """
 model_name = "meta-llama/Llama-2-7b-chat-hf"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -30,12 +30,12 @@ GEMINI_API_KEY = "AIzaSyCgt7gn1MaoJrOjSzaybX4BpWx4rSZiR1U"
 genai.configure(api_key=GEMINI_API_KEY)
 
 #print("Hello")
-# Function to clean job descriptions
+
 def clean_text(text):
-    soup = BeautifulSoup(text, "html.parser")  # Remove HTML tags
+    soup = BeautifulSoup(text, "html.parser")  
     text = soup.get_text()
     text = text.replace("\xa0", " ").replace("\n", " ").replace("nbsp", "").strip()
-    text = re.sub(r"\s+", " ", text).strip()  # Remove extra spaces & newlines
+    text = re.sub(r"\s+", " ", text).strip()  
     #print(text)
     return text
 
@@ -43,7 +43,7 @@ def retrieve_context(query, top_k=5):
 
     pinecone_results = index.query(
         vector=embedder.encode(query).tolist(),
-        top_k=50,  # Retrieve more than top_k for better ranking
+        top_k=50,  
         include_metadata=True
     )
 
@@ -60,34 +60,34 @@ def retrieve_context(query, top_k=5):
         for match in pinecone_results["matches"]
     }
     
-    # Tokenize job titles + descriptions for BM25
+    
     tokenized_jobs = [(job["title"] + " " + job["description"]).split() for job in job_dict.values()]
     bm25 = BM25Okapi(tokenized_jobs)
 
-    # BM25 Retrieval
+    
     bm25_scores = bm25.get_scores(query.split())
-    job_ids = list(job_dict.keys())  # Maintain ID order
+    job_ids = list(job_dict.keys())  
     bm25_results = [(job_ids[i], bm25_scores[i]) for i in np.argsort(bm25_scores)[::-1][:top_k]]
 
-    # Apply Reciprocal Rank Fusion (RRF)
+    
     rrf_scores = {}
     rrf_k = 60  
 
-    # BM25 RRF scoring
+    
     for rank, (idx, score) in enumerate(bm25_results, start=1):
         rrf_scores[idx] = rrf_scores.get(idx, 0) + 1 / (rrf_k + rank)
 
-    # Pinecone RRF scoring
+    
     for rank, match in enumerate(pinecone_results["matches"], start=1):
         idx = match["id"]
         rrf_scores[idx] = rrf_scores.get(idx, 0) + 1 / (rrf_k + rank)
 
-    # Sort results by RRF score
+    
     sorted_results = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
 
     return [job_dict[idx] for idx, _ in sorted_results[:top_k] if idx in job_dict]  
 
-# Generate response using retrieved jobs
+
 def generate_rag_response(user_query):
     retrieved_docs = retrieve_context(user_query, top_k=8)
 
@@ -134,12 +134,12 @@ You are an AI-powered job assistant. Your task is to extract **only** the releva
     response = tokenizer.decode(output_tokens[0], skip_special_tokens=True)
     return response
     """
-    model = genai.GenerativeModel("gemini-1.5-pro")  # Use Gemini 1.5 Pro
+    model = genai.GenerativeModel("gemini-1.5-pro")  
     response = model.generate_content(prompt)
 
     return response.text if response else "Failed to generate response from Gemini."
 
-# User Input Loop for Queries
+
 """
 def chat():
     while True:

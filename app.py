@@ -7,10 +7,10 @@ import pandas as pd
 import pinecone
 import time
 
-# Streamlit UI
+
 st.title("AI Resume Parser & Job Recommendation System....")
 
-# Upload Resumes
+
 """
 uploaded_files = st.file_uploader(
     "Upload Resumes (PDF or Image)", 
@@ -27,7 +27,7 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # Extract Text from PDFs
+    
     """
     resumes = []
     
@@ -42,11 +42,11 @@ if uploaded_files:
     resumes = [extract_text_from_pdf(file) for file in uploaded_files]
     extracted_info = [extract_resume_info(text) for text in resumes]
     
-    # Store extracted skills in a dataframe
+    
     results = pd.DataFrame({"Resume": [file.name for file in uploaded_files], "Extracted Info": extracted_info})
     st.write(results)
     
-    # Fetch jobs for the extracted skills
+    
     jobs = fetch_jobs(" OR ".join(extracted_info), "Remote", page=1)
     cleaned_jobs = preprocess_jobs(jobs)
     
@@ -77,18 +77,17 @@ if uploaded_files:
         i+=1
         vectors_to_store.append((job_id, vector.tolist(), metadata))
 
-    # Upsert data into Pinecone
+    
     index.upsert(vectors=vectors_to_store)
     
     st.success("Job data stored in Pinecone. You can now ask queries!")
     
-    # User Query
+    
     user_query = st.text_input("Enter job-related query:")
     if user_query:
         response = chat(user_query)
         st.write(response)
     
-    # Option to clear Pinecone database
     if st.button("Clear Job Data from Pinecone"):
         index.delete(delete_all=True)
         st.success("Pinecone index cleared!")
