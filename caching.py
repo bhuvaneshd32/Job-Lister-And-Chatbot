@@ -21,6 +21,8 @@ if uploaded_files:
     st.write(results)
     
     skill_query = " OR ".join(extracted_info)
+    user_query = st.text_input("Enter job-related query:")
+    cache_message = st.empty()  
     cache_key = f"job_recs:{skill_query}"
     
   
