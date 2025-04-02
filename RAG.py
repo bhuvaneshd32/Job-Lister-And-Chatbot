@@ -10,7 +10,7 @@ import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 
 
-PINECONE_API_KEY = "9f049509-9a80-4dd7-9ad1-58055c2e034a"
+PINECONE_API_KEY = "pcsk_61MNxg_KG1zYAfQh9M3LSEaXjiwBvnTck97mNPRMsFNW5DCbWY1AvDYiR3AirJNytjTHkS"
 PINECONE_ENV = "us-east-1"
 PINECONE_INDEX_NAME = "jobrecommendation"
 
