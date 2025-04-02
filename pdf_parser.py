@@ -6,7 +6,7 @@ import streamlit as st
 
 
 
-# Load NLP model
+
 nlp = spacy.load("en_core_web_sm")
 
 def extract_text_from_pdf(file):
