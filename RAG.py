@@ -4,8 +4,8 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 import re
 from bs4 import BeautifulSoup
-from transformers import T5Tokenizer, T5ForConditionalGeneration
-from transformers import AutoTokenizer, AutoModelForCausalLM
+#from transformers import T5Tokenizer, T5ForConditionalGeneration
+#from transformers import AutoTokenizer, AutoModelForCausalLM
 import google.generativeai as genai
 from sentence_transformers import SentenceTransformer
 
