@@ -5,7 +5,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 
-# Your Jooble API Key
+
 API_KEY = "ee033cd6-069b-4bb8-99f6-0855bcc45b5a"
 API_URL = f"https://jooble.org/api/{API_KEY}"
 
@@ -27,10 +27,10 @@ def fetch_jobs(keywords, location, page=1):
 def clean_text(text):
     """Removes HTML tags, special characters, and extra spaces from text."""
     if not text:
-        return "N/A"  # Default value for missing data
-    text = re.sub(r'<.*?>', '', text)  # Remove HTML tags
-    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)  # Remove special characters
-    return text.strip().lower()  # Convert to lowercase and remove extra spaces
+        return "N/A"  
+    text = re.sub(r'<.*?>', '', text)  
+    text = re.sub(r'[^a-zA-Z0-9\s]', '', text)  
+    return text.strip().lower()  
 
 def preprocess_jobs(jobs):
     """Preprocess job data by cleaning and structuring."""
@@ -40,19 +40,19 @@ def preprocess_jobs(jobs):
             "title": clean_text(job.get("title")),
             "company": clean_text(job.get("company")),
             "location": clean_text(job.get("location")),
-            "description": clean_text(job.get("snippet")),  # Jooble uses 'snippet' for job descriptions
+            "description": clean_text(job.get("snippet")),  
             "salary": clean_text(job.get("salary")),
-            "link": job.get("link", "N/A")  # Keep the link as it is
+            "link": job.get("link", "N/A")  
         })
     return cleaned_jobs
 
-# Load pre-trained Sentence-BERT model
-model = SentenceTransformer('all-MiniLM-L6-v2')  # Fast & efficient
+
+model = SentenceTransformer('all-MiniLM-L6-v2')  
 
 def encode_jobs(jobs):
     """Encodes job descriptions into numerical vectors."""
-    descriptions = [job["description"] for job in jobs]  # Extract descriptions
-    vectors = model.encode(descriptions, convert_to_numpy=True)  # Convert to embeddings
+    descriptions = [job["description"] for job in jobs]  
+    vectors = model.encode(descriptions, convert_to_numpy=True)  
     return vectors
 
 # Test preprocessing on the fetched jobs
